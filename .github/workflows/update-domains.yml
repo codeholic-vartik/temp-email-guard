@@ -1,0 +1,65 @@
+name: Update Disposable Email Domains
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-domains:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Aggregate domains from all sources
+        run: npm run aggregate
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if [ -n "$(git status --porcelain data/)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          git commit -m "chore: update disposable email domains [skip ci]"
+          git push
+
+      - name: Create summary
+        run: |
+          DOMAIN_COUNT=$(cat data/all-domains.json | jq 'length')
+          echo "## Domain Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully aggregated domains from 9 sources" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Total unique domains: **$DOMAIN_COUNT**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Sources:" >> $GITHUB_STEP_SUMMARY
+          echo "- disposable-email-domains (primary)" >> $GITHUB_STEP_SUMMARY
+          echo "- disposable-email-detector (~185k domains)" >> $GITHUB_STEP_SUMMARY
+          echo "- ivolo-disposable (~122k domains)" >> $GITHUB_STEP_SUMMARY
+          echo "- martenson-disposable (legacy)" >> $GITHUB_STEP_SUMMARY
+          echo "- mailchecker (~56k domains)" >> $GITHUB_STEP_SUMMARY
+          echo "- sajjadh47-disposable (~103k domains)" >> $GITHUB_STEP_SUMMARY
+          echo "- websniffer-disposable (curated)" >> $GITHUB_STEP_SUMMARY
+          echo "- groundcat-disposable (MX validated)" >> $GITHUB_STEP_SUMMARY
+          echo "- disposable-main (updated every 24h)" >> $GITHUB_STEP_SUMMARY
+
