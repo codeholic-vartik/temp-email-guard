@@ -101,9 +101,6 @@ export function clearCache(): void {
 // Re-export DNS detector functions
 export { isDisposableByDNS, clearDNSCache } from './utils/dns-detector';
 
-// Re-export DNS detector functions
-export { isDisposableByDNS, clearDNSCache as clearDNSCache } from './utils/dns-detector';
-
 /**
  * Initialize the package (loads domains from GitHub)
  * Call this before using isTempEmail for best performance
